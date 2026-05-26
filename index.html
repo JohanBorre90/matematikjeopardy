@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matematik Jeopardy - 1g</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a2e;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      color: #f0c040;
+      text-shadow: 0 0 20px #f0c04088;
+      margin-bottom: 24px;
+    }
+
+    /* ── Scoreboard ── */
+    #scoreboard {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .team-card {
+      background: #1a1a4e;
+      border: 2px solid #3355cc;
+      border-radius: 10px;
+      padding: 10px 20px;
+      text-align: center;
+      min-width: 130px;
+    }
+
+    .team-name {
+      font-size: 0.85rem;
+      color: #aac;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .team-score {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #f0c040;
+    }
+
+    .team-btn-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      justify-content: center;
+    }
+
+    .score-btn {
+      border: none;
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .btn-correct { background: #2a9d2a; color: #fff; }
+    .btn-wrong   { background: #c03030; color: #fff; }
+    .btn-correct:hover { background: #38c438; }
+    .btn-wrong:hover   { background: #e04040; }
+
+    /* ── Board ── */
+    #board {
+      display: grid;
+      gap: 8px;
+      width: 100%;
+      max-width: 1300px;
+    }
+
+    .category-header {
+      background: #1a3a8a;
+      border: 2px solid #3355cc;
+      border-radius: 8px;
+      padding: 14px 8px;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ccdeff;
+    }
+
+    .cell {
+      background: #1a3a8a;
+      border: 2px solid #3355cc;
+      border-radius: 8px;
+      padding: 20px 8px;
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #f0c040;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.used) {
+      background: #2248bb;
+      transform: scale(1.03);
+    }
+
+    .cell.used {
+      background: #0d1f4a;
+      color: #0d1f4a;
+      cursor: default;
+      pointer-events: none;
+      border-color: #0d1f4a;
+    }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000000cc;
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #modal-overlay.active { display: flex; }
+
+    #modal {
+      background: #0f1f6a;
+      border: 3px solid #f0c040;
+      border-radius: 16px;
+      padding: 40px 48px;
+      max-width: 720px;
+      width: 90%;
+      text-align: center;
+      position: relative;
+    }
+
+    #modal-points {
+      font-size: 1rem;
+      color: #f0c040;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    #modal-category {
+      font-size: 0.9rem;
+      color: #aac;
+      margin-bottom: 22px;
+    }
+
+    #modal-question {
+      font-size: 1.45rem;
+      line-height: 1.6;
+      color: #fff;
+      margin-bottom: 28px;
+    }
+
+    #modal-answer {
+      background: #071240;
+      border: 1px solid #3355cc;
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      color: #90efc0;
+      margin-bottom: 24px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    #modal-answer.visible { display: block; }
+
+    .modal-btn-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .modal-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .modal-btn:hover { opacity: 0.85; }
+
+    #btn-show-answer { background: #2255cc; color: #fff; }
+    #btn-close       { background: #555; color: #fff; }
+
+    /* ── Reset button ── */
+    #reset-btn {
+      margin-top: 28px;
+      background: none;
+      border: 1px solid #555;
+      color: #888;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    #reset-btn:hover { border-color: #f0c040; color: #f0c040; }
+  </style>
+</head>
+<body>
+
+<h1>Matematik Jeopardy</h1>
+
+<div id="scoreboard"></div>
+<div id="board"></div>
+
+<button id="reset-btn" onclick="resetGame()">Nulstil spil</button>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-points"></div>
+    <div id="modal-category"></div>
+    <div id="modal-question"></div>
+    <div id="modal-answer"></div>
+    <div class="modal-btn-row">
+      <button class="modal-btn" id="btn-show-answer" onclick="showAnswer()">Vis svar</button>
+      <button class="modal-btn" id="btn-close" onclick="closeModal()">Luk</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  HOLD
+// ═══════════════════════════════════════════════════════
+
+const TEAMS = [
+  { name: "Hold 1", score: 0 },
+  { name: "Hold 2", score: 0 },
+  { name: "Hold 3", score: 0 },
+];
+
+// ═══════════════════════════════════════════════════════
+//  SPØRGSMÅL
+//  q = spørgsmål, a = svar  (HTML er tilladt)
+// ═══════════════════════════════════════════════════════
+
+const POINTS = [100, 200, 300, 400, 500];
+
+const CATEGORIES = [
+  {
+    name: "Lineære funktioner",
+    questions: [
+      {
+        q: "Hvad er hældningskoefficienten <em>a</em> i&nbsp; f(x) = 3x − 7 ?",
+        a: "a = 3"
+      },
+      {
+        q: "Hvad er skæringen med y-aksen for&nbsp; f(x) = −2x + 5 ?",
+        a: "b = 5 &nbsp;→&nbsp; skæringspunkt: (0, 5)"
+      },
+      {
+        q: "Find ligningen for linjen der går gennem (0, 4) med hældning −3.",
+        a: "f(x) = −3x + 4"
+      },
+      {
+        q: "Find skæringspunktet for de to linjer:<br>f(x) = 2x + 1 &nbsp;og&nbsp; g(x) = −x + 7",
+        a: "2x + 1 = −x + 7 &nbsp;⇒&nbsp; x = 2, y = 5<br><strong>Skæringspunkt: (2, 5)</strong>"
+      },
+      {
+        q: "Find ligningen for linjen der går gennem punkterne (1, 3) og (3, 9).",
+        a: "a = (9 − 3) / (3 − 1) = 3<br>b = 3 − 3·1 = 0<br><strong>f(x) = 3x</strong>"
+      },
+    ],
+  },
+  {
+    name: "Eksponentielle funktioner",
+    questions: [
+      {
+        q: "Hvad er fremskrivningsfaktoren, hvis noget vokser med 12 % om året?",
+        a: "a = 1 + 0,12 = <strong>1,12</strong>"
+      },
+      {
+        q: "En eksponentiel funktion har forskriften f(x) = 5 · 2<sup>x</sup>.<br>Hvad er f(3)?",
+        a: "f(3) = 5 · 2³ = 5 · 8 = <strong>40</strong>"
+      },
+      {
+        q: "Hvad er fordoblingskonstanten T₂ for en eksponentiel vækst på 10 % om året?<br><small>(Giv et afrundet svar)</small>",
+        a: "T₂ = log(2) / log(1,1) ≈ <strong>7,3 år</strong>"
+      },
+      {
+        q: "En bil kostede 200.000 kr. Den falder med 15 % i værdi hvert år.<br>Hvad er den værd efter 4 år?",
+        a: "200.000 · 0,85⁴ ≈ 200.000 · 0,522 ≈ <strong>104.400 kr</strong>"
+      },
+      {
+        q: "Hvornår er f(x) = 3 · 1,2<sup>x</sup> lig med 18?<br><small>(Løs for x)</small>",
+        a: "1,2<sup>x</sup> = 6<br>x = log(6) / log(1,2) ≈ <strong>10,0</strong>"
+      },
+    ],
+  },
+  {
+    name: "Andengradspolynomiet",
+    questions: [
+      {
+        q: "Hvad er diskriminanten for&nbsp; x² + 6x + 9 ?",
+        a: "d = 6² − 4·1·9 = 36 − 36 = <strong>0</strong><br>(Dobbeltrod)"
+      },
+      {
+        q: "Løs ligningen:&nbsp; x² − 7x + 12 = 0",
+        a: "d = 49 − 48 = 1<br>x = (7 ± 1) / 2<br><strong>x = 4 &nbsp;eller&nbsp; x = 3</strong>"
+      },
+      {
+        q: "Find toppunktet for&nbsp; f(x) = x² − 6x + 11",
+        a: "x<sub>top</sub> = −(−6) / (2·1) = 3<br>y<sub>top</sub> = 9 − 18 + 11 = 2<br><strong>Tp = (3, 2)</strong>"
+      },
+      {
+        q: "En parabel har rødderne x = −2 og x = 4 og går gennem (0, −8).<br>Find forskriften f(x).",
+        a: "f(x) = a(x + 2)(x − 4)<br>f(0) = a·2·(−4) = −8 &nbsp;⇒&nbsp; a = 1<br><strong>f(x) = x² − 2x − 8</strong>"
+      },
+      {
+        q: "Løs ligningen:&nbsp; 3x² − 5x − 2 = 0",
+        a: "d = 25 + 24 = 49<br>x = (5 ± 7) / 6<br><strong>x = 2 &nbsp;eller&nbsp; x = −⅓</strong>"
+      },
+    ],
+  },
+  {
+    name: "Trigonometri",
+    questions: [
+      {
+        q: "Hvad er værdien af sin(90°)?",
+        a: "<strong>sin(90°) = 1</strong>"
+      },
+      {
+        q: "I en retvinklet trekant er den modstående katete 4 og hypotenusen 8.<br>Find vinklen v.",
+        a: "sin(v) = 4 / 8 = 0,5<br><strong>v = 30°</strong>"
+      },
+      {
+        q: "Brug cosinusrelationen til at finde siden c,<br>når a = 5, b = 7 og C = 60°.",
+        a: "c² = 5² + 7² − 2·5·7·cos(60°)<br>c² = 25 + 49 − 35 = 39<br><strong>c ≈ 6,24</strong>"
+      },
+      {
+        q: "Find arealet af en trekant med sider a = 6, b = 8<br>og den mellemliggende vinkel C = 45°.",
+        a: "T = ½ · 6 · 8 · sin(45°)<br>T = 24 · (√2/2)<br><strong>T ≈ 17,0</strong>"
+      },
+      {
+        q: "Brug sinusrelationen til at finde vinkel B,<br>når a = 10, A = 40° og b = 7.",
+        a: "sin(B) / 7 = sin(40°) / 10<br>sin(B) = 7 · sin(40°) / 10 ≈ 0,450<br><strong>B ≈ 26,7°</strong>"
+      },
+    ],
+  },
+  {
+    name: "Potensfunktioner",
+    questions: [
+      {
+        q: "Hvad er den generelle form for en potensfunktion?",
+        a: "<strong>f(x) = b · x<sup>a</sup></strong><br>hvor a og b er konstanter"
+      },
+      {
+        q: "Forenkel udtrykket:&nbsp; x⁵ / x²",
+        a: "x⁵ / x² = <strong>x³</strong><br>(Potensregel: x<sup>m</sup> / x<sup>n</sup> = x<sup>m−n</sup>)"
+      },
+      {
+        q: "En potensfunktion går gennem (1, 2) og (2, 8).<br>Find forskriften f(x).",
+        a: "f(1) = b·1<sup>a</sup> = b = 2<br>f(2) = 2·2<sup>a</sup> = 8 &nbsp;⇒&nbsp; 2<sup>a</sup> = 4 &nbsp;⇒&nbsp; a = 2<br><strong>f(x) = 2x²</strong>"
+      },
+      {
+        q: "Forenkel udtrykket:&nbsp; (x³)² · x⁻¹",
+        a: "(x³)² = x⁶<br>x⁶ · x⁻¹ = <strong>x⁵</strong>"
+      },
+      {
+        q: "En potensfunktion har eksponent a = ½.<br>Hvis f(4) = 6, hvad er så f(16)?",
+        a: "f(x) = b · x<sup>½</sup><br>f(4) = b·√4 = 2b = 6 &nbsp;⇒&nbsp; b = 3<br>f(16) = 3·√16 = 3·4 = <strong>12</strong>"
+      },
+    ],
+  },
+  {
+    name: "Formler",
+    questions: [
+      {
+        q: "Hvad er formlen for arealet af en trekant?",
+        a: "<strong>A = ½ · g · h</strong><br>(grundlinje × højde, divideret med 2)"
+      },
+      {
+        q: "Hvad siger Pythagoras' sætning?",
+        a: "I en retvinklet trekant:<br><strong>a² + b² = c²</strong><br>(c er hypotenusen)"
+      },
+      {
+        q: "Skriv løsningsformlen (abc-formlen) for&nbsp; ax² + bx + c = 0.",
+        a: "d = b² − 4ac<br><strong>x = (−b ± √d) / (2a)</strong>"
+      },
+      {
+        q: "Hvad er formlen for renters rente (sammensat forrentning)?",
+        a: "<strong>K<sub>n</sub> = K<sub>0</sub> · (1 + r)<sup>n</sup></strong><br>K₀ = startkapital, r = rente, n = antal perioder"
+      },
+      {
+        q: "Skriv både sinusrelationen og cosinusrelationen.",
+        a: "<strong>Sinusrelationen:</strong><br>a/sin(A) = b/sin(B) = c/sin(C)<br><br><strong>Cosinusrelationen:</strong><br>c² = a² + b² − 2ab·cos(C)"
+      },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+//  SPIL-LOGIK
+// ═══════════════════════════════════════════════════════
+
+let used = {};
+let activeCell = null;
+
+function buildBoard() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  const cols = CATEGORIES.length;
+  board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  CATEGORIES.forEach(cat => {
+    const el = document.createElement("div");
+    el.className = "category-header";
+    el.textContent = cat.name;
+    board.appendChild(el);
+  });
+
+  POINTS.forEach((pts, row) => {
+    CATEGORIES.forEach((cat, col) => {
+      const key = `${col}-${row}`;
+      const el = document.createElement("div");
+      el.className = "cell" + (used[key] ? " used" : "");
+      el.textContent = pts;
+      el.dataset.col = col;
+      el.dataset.row = row;
+      el.onclick = () => openCell(col, row);
+      board.appendChild(el);
+    });
+  });
+}
+
+function buildScoreboard() {
+  const sb = document.getElementById("scoreboard");
+  sb.innerHTML = "";
+  TEAMS.forEach((team, i) => {
+    sb.innerHTML += `
+      <div class="team-card">
+        <div class="team-name">${team.name}</div>
+        <div class="team-score" id="score-${i}">${team.score}</div>
+        <div class="team-btn-row">
+          <button class="score-btn btn-correct" onclick="addScore(${i}, activePoints())">+</button>
+          <button class="score-btn btn-wrong"   onclick="addScore(${i}, -activePoints())">−</button>
+        </div>
+      </div>`;
+  });
+}
+
+function activePoints() {
+  return activeCell ? activeCell.points : 0;
+}
+
+function addScore(teamIdx, delta) {
+  TEAMS[teamIdx].score += delta;
+  document.getElementById(`score-${teamIdx}`).textContent = TEAMS[teamIdx].score;
+}
+
+function openCell(col, row) {
+  const key = `${col}-${row}`;
+  if (used[key]) return;
+  activeCell = { col, row, points: POINTS[row] };
+  const q = CATEGORIES[col].questions[row];
+
+  document.getElementById("modal-points").textContent = POINTS[row] + " point";
+  document.getElementById("modal-category").textContent = CATEGORIES[col].name;
+  document.getElementById("modal-question").innerHTML = q.q;
+  document.getElementById("modal-answer").innerHTML = "Svar: " + q.a;
+  document.getElementById("modal-answer").classList.remove("visible");
+  document.getElementById("modal-overlay").classList.add("active");
+}
+
+function showAnswer() {
+  document.getElementById("modal-answer").classList.add("visible");
+}
+
+function closeModal() {
+  if (activeCell) {
+    const key = `${activeCell.col}-${activeCell.row}`;
+    used[key] = true;
+    const cell = document.querySelector(
+      `.cell[data-col="${activeCell.col}"][data-row="${activeCell.row}"]`
+    );
+    if (cell) cell.classList.add("used");
+  }
+  document.getElementById("modal-overlay").classList.remove("active");
+  activeCell = null;
+}
+
+function resetGame() {
+  if (!confirm("Vil du nulstille hele spillet?")) return;
+  used = {};
+  TEAMS.forEach(t => t.score = 0);
+  buildBoard();
+  buildScoreboard();
+}
+
+buildBoard();
+buildScoreboard();
+</script>
+</body>
+</html>

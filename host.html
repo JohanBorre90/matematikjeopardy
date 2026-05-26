@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Matematik Jeopardy – Lærer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a2e;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      color: #f0c040;
+      text-shadow: 0 0 20px #f0c04077;
+      margin-bottom: 16px;
+    }
+
+    /* ── Status bar ── */
+    #status-bar {
+      background: #12124a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      color: #aac;
+      margin-bottom: 16px;
+    }
+    #status-bar span { color: #f0c040; font-weight: bold; }
+
+    /* ── Scoreboard ── */
+    #scoreboard {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .team-card {
+      background: #1a1a4e;
+      border: 2px solid #3355cc;
+      border-radius: 10px;
+      padding: 8px 18px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .team-name  { font-size: 0.8rem; color: #aac; text-transform: uppercase; letter-spacing: 1px; }
+    .team-score { font-size: 1.8rem; font-weight: bold; color: #f0c040; }
+
+    /* ── Board ── */
+    #board {
+      display: grid;
+      gap: 7px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .cat-header {
+      background: #1a3a8a;
+      border: 2px solid #3355cc;
+      border-radius: 8px;
+      padding: 12px 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ccdeff;
+    }
+
+    .cell {
+      background: #1a3a8a;
+      border: 2px solid #3355cc;
+      border-radius: 8px;
+      padding: 18px 6px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #f0c040;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .cell:hover:not(.used) { background: #2248bb; transform: scale(1.03); }
+    .cell.used {
+      background: #0d1f4a;
+      color: #0d1f4a;
+      cursor: default;
+      pointer-events: none;
+      border-color: #0d1f4a;
+    }
+
+    /* ── Host panel (overlay) ── */
+    #panel-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000000cc;
+      z-index: 100;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    #panel-overlay.active { display: flex; }
+
+    #panel {
+      background: #0f1f6a;
+      border: 3px solid #f0c040;
+      border-radius: 16px;
+      padding: 28px 36px;
+      max-width: 900px;
+      width: 100%;
+      margin: auto;
+    }
+
+    #panel-meta {
+      display: flex;
+      gap: 14px;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    #panel-points   { font-size: 1.1rem; color: #f0c040; font-weight: bold; }
+    #panel-category { font-size: 0.9rem; color: #aac; }
+
+    #panel-question {
+      font-size: 1.35rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    #panel-answer {
+      background: #071240;
+      border: 1px solid #3355cc;
+      border-radius: 8px;
+      padding: 14px 18px;
+      color: #90efc0;
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      display: none;
+    }
+    #panel-answer.visible { display: block; }
+
+    /* ── Answer table ── */
+    #answers-section { margin-bottom: 20px; }
+
+    #answers-section h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: #aac;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    #answers-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #answers-table th {
+      font-size: 0.78rem;
+      color: #aac;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      text-align: left;
+      border-bottom: 1px solid #2a3a6a;
+    }
+    #answers-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #1a2a5a;
+      vertical-align: middle;
+    }
+    .ans-team    { font-weight: bold; color: #ccdeff; width: 160px; }
+    .ans-text    { color: #fff; }
+    .ans-pending { color: #556; font-style: italic; }
+
+    .award-btn {
+      border: none;
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: 4px;
+    }
+    .btn-correct { background: #2a9d2a; color: #fff; }
+    .btn-wrong   { background: #c03030; color: #fff; }
+    .btn-correct:hover { background: #38c438; }
+    .btn-wrong:hover   { background: #e04040; }
+
+    /* ── Panel buttons ── */
+    .panel-btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .panel-btn:hover { opacity: 0.85; }
+
+    #btn-reveal { background: #2255cc; color: #fff; }
+    #btn-close  { background: #444;    color: #fff; }
+
+    /* ── Bottom buttons ── */
+    #bottom-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+
+    .bottom-btn {
+      border: 1px solid #555;
+      background: none;
+      color: #888;
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+    .bottom-btn:hover { border-color: #f0c040; color: #f0c040; }
+
+    /* ── Waiting for host ── */
+    #waiting-msg {
+      color: #556;
+      font-size: 0.85rem;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Matematik Jeopardy</h1>
+
+<div id="status-bar">Status: <span id="conn-status">Forbinder...</span></div>
+
+<div id="scoreboard"></div>
+<div id="board"></div>
+
+<div id="bottom-row">
+  <button class="bottom-btn" onclick="resetGame()">Nulstil spil</button>
+</div>
+
+<!-- Host panel -->
+<div id="panel-overlay">
+  <div id="panel">
+    <div id="panel-meta">
+      <div id="panel-points"></div>
+      <div id="panel-category"></div>
+    </div>
+    <div id="panel-question"></div>
+    <div id="panel-answer"></div>
+
+    <div id="answers-section">
+      <h3>Holdsvar</h3>
+      <table id="answers-table">
+        <thead>
+          <tr>
+            <th>Hold</th>
+            <th>Svar</th>
+            <th>Point</th>
+          </tr>
+        </thead>
+        <tbody id="answers-body"></tbody>
+      </table>
+    </div>
+
+    <div class="panel-btn-row">
+      <button class="panel-btn" id="btn-reveal" onclick="revealAnswer()">Vis svar for alle</button>
+      <button class="panel-btn" id="btn-close"  onclick="closeQuestion()">Luk spørgsmål</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  let currentQ   = null;
+  let currentAns = {};
+  let allTeams   = [];
+  let categories = [];
+  let points     = [];
+  let usedCells  = {};
+
+  // ── Forbindelse ──────────────────────────────────────
+  socket.on('connect', () => {
+    socket.emit('host-connect');
+  });
+
+  socket.on('host-ok', () => {
+    document.getElementById('conn-status').textContent = 'Forbundet som lærer';
+  });
+
+  // ── Initial tilstand ─────────────────────────────────
+  socket.on('state', (data) => {
+    categories = data.categories;
+    points     = data.points;
+    usedCells  = data.usedCells;
+    allTeams   = data.teams;
+    if (data.currentQ) {
+      currentQ = data.currentQ;
+      showPanel();
+    }
+    buildBoard();
+    renderScoreboard();
+  });
+
+  // ── Hold opdateringer ────────────────────────────────
+  socket.on('teams-update', (teams) => {
+    allTeams = teams;
+    renderScoreboard();
+    if (currentQ) renderAnswerTable();
+  });
+
+  // ── Spørgsmål åbnet (bekræftelse til host) ───────────
+  socket.on('question-opened', (q) => {
+    currentQ   = q;
+    currentAns = {};
+    showPanel();
+    renderAnswerTable();
+  });
+
+  // ── Svar modtaget ────────────────────────────────────
+  socket.on('answers-update', (ans) => {
+    currentAns = ans;
+    renderAnswerTable();
+  });
+
+  // ── Svar afsløret ────────────────────────────────────
+  socket.on('answer-revealed', (a) => {
+    document.getElementById('panel-answer').innerHTML = 'Svar: ' + a;
+    document.getElementById('panel-answer').classList.add('visible');
+  });
+
+  // ── Spørgsmål lukket ─────────────────────────────────
+  socket.on('question-closed', () => {
+    currentQ   = null;
+    currentAns = {};
+    document.getElementById('panel-overlay').classList.remove('active');
+  });
+
+  socket.on('used-cells-update', (cells) => {
+    usedCells = cells;
+    refreshUsed();
+  });
+
+  // ── Nulstil ──────────────────────────────────────────
+  socket.on('game-reset', () => {
+    currentQ   = null;
+    currentAns = {};
+    usedCells  = {};
+    document.getElementById('panel-overlay').classList.remove('active');
+    buildBoard();
+  });
+
+  // ════════════════════════════════════════════════════
+  //  UI
+  // ════════════════════════════════════════════════════
+
+  function buildBoard() {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    const cols = categories.length;
+    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+    categories.forEach(cat => {
+      const el = document.createElement('div');
+      el.className = 'cat-header';
+      el.textContent = cat.name;
+      board.appendChild(el);
+    });
+
+    points.forEach((pts, row) => {
+      categories.forEach((cat, col) => {
+        const key = `${col}-${row}`;
+        const el  = document.createElement('div');
+        el.className = 'cell' + (usedCells[key] ? ' used' : '');
+        el.textContent = pts;
+        el.dataset.col = col;
+        el.dataset.row = row;
+        el.onclick = () => socket.emit('open-question', { col, row });
+        board.appendChild(el);
+      });
+    });
+  }
+
+  function refreshUsed() {
+    document.querySelectorAll('.cell').forEach(el => {
+      const key = `${el.dataset.col}-${el.dataset.row}`;
+      if (usedCells[key]) el.classList.add('used');
+    });
+  }
+
+  function renderScoreboard() {
+    const sb = document.getElementById('scoreboard');
+    sb.innerHTML = allTeams.map(t =>
+      `<div class="team-card">
+         <div class="team-name">${esc(t.name)}</div>
+         <div class="team-score">${t.score}</div>
+       </div>`
+    ).join('');
+  }
+
+  function showPanel() {
+    if (!currentQ) return;
+    document.getElementById('panel-points').textContent   = currentQ.points + ' point';
+    document.getElementById('panel-category').textContent = currentQ.category;
+    document.getElementById('panel-question').innerHTML   = currentQ.q;
+    document.getElementById('panel-answer').innerHTML     = '';
+    document.getElementById('panel-answer').classList.remove('visible');
+    document.getElementById('panel-overlay').classList.add('active');
+    renderAnswerTable();
+  }
+
+  function renderAnswerTable() {
+    const tbody = document.getElementById('answers-body');
+    tbody.innerHTML = allTeams.map(t => {
+      const ans = currentAns[t.name];
+      const ansCell = ans
+        ? `<td class="ans-text">${esc(ans)}</td>`
+        : `<td class="ans-pending">Afventer...</td>`;
+      const pts = currentQ ? currentQ.points : 0;
+      return `<tr>
+        <td class="ans-team">${esc(t.name)}</td>
+        ${ansCell}
+        <td>
+          <button class="award-btn btn-correct" onclick="award('${esc(t.name)}', ${pts})">+${pts}</button>
+          <button class="award-btn btn-wrong"   onclick="award('${esc(t.name)}', ${-pts})">−${pts}</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ════════════════════════════════════════════════════
+  //  HANDLINGER
+  // ════════════════════════════════════════════════════
+
+  function revealAnswer()  { socket.emit('reveal-answer'); }
+  function closeQuestion() { socket.emit('close-question'); }
+  function resetGame() {
+    if (confirm('Nulstil hele spillet (point og brugte celler)?'))
+      socket.emit('reset-game');
+  }
+  function award(teamName, delta) {
+    socket.emit('award-points', { teamName, delta });
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

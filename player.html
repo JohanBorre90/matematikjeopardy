@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Matematik Jeopardy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a2e;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Top bar ── */
+    #topbar {
+      width: 100%;
+      background: #0d0d3a;
+      border-bottom: 2px solid #1a3a8a;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    #topbar-title {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #f0c040;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    #topbar-team {
+      font-size: 0.85rem;
+      color: #aac;
+      display: none;
+    }
+    #topbar-team strong { color: #fff; }
+    #topbar-score {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #f0c040;
+      display: none;
+    }
+
+    /* ── Main content area ── */
+    #main {
+      flex: 1;
+      width: 100%;
+      max-width: 600px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ════════════════════════
+       SCREEN: JOIN
+    ════════════════════════ */
+    #screen-join {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+    }
+
+    .big-title {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #f0c040;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 0 0 20px #f0c04077;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #aac;
+    }
+
+    #join-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .field-label {
+      font-size: 0.85rem;
+      color: #aac;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: #12124a;
+      border: 2px solid #3355cc;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 1.1rem;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: #f0c040; }
+    input[type="text"]::placeholder { color: #445; }
+
+    .big-btn {
+      width: 100%;
+      background: #f0c040;
+      color: #0a0a2e;
+      border: none;
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .big-btn:hover  { opacity: 0.9; transform: scale(1.02); }
+    .big-btn:active { transform: scale(0.98); }
+
+    #join-error {
+      color: #ff6666;
+      font-size: 0.9rem;
+      text-align: center;
+      min-height: 1.2rem;
+    }
+
+    /* ════════════════════════
+       SCREEN: GAME
+    ════════════════════════ */
+    #screen-game { display: none; flex-direction: column; gap: 16px; }
+
+    /* Scoreboard */
+    #scoreboard {
+      background: #12124a;
+      border: 1px solid #2a3a7a;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .sb-header {
+      background: #1a2a6a;
+      padding: 8px 14px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #aac;
+    }
+
+    .sb-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #1a2a5a;
+    }
+    .sb-row:last-child { border-bottom: none; }
+
+    .sb-row.my-team {
+      background: #1a2a6a;
+    }
+    .sb-rank  { color: #556; font-size: 0.85rem; width: 24px; }
+    .sb-name  { flex: 1; font-weight: bold; }
+    .sb-pts   { color: #f0c040; font-weight: bold; font-size: 1rem; }
+
+    /* ════════════════════════
+       IDLE STATE
+    ════════════════════════ */
+    #idle-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 12px;
+      padding: 40px 20px;
+    }
+
+    .waiting-icon {
+      font-size: 3rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    .waiting-text {
+      font-size: 1.1rem;
+      color: #aac;
+    }
+
+    /* ════════════════════════
+       QUESTION STATE
+    ════════════════════════ */
+    #question-panel {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .q-meta {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .q-points   {
+      background: #f0c040;
+      color: #0a0a2e;
+      font-weight: bold;
+      font-size: 0.85rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .q-category { color: #aac; font-size: 0.85rem; }
+
+    .q-text {
+      background: #0f1f6a;
+      border: 2px solid #3355cc;
+      border-radius: 12px;
+      padding: 24px 20px;
+      font-size: 1.25rem;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    /* Answer form */
+    #answer-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #answer-input {
+      font-size: 1.1rem;
+      padding: 14px 16px;
+    }
+
+    /* Submitted state */
+    #submitted-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .submitted-check {
+      font-size: 3rem;
+      color: #2a9d2a;
+    }
+
+    .submitted-label {
+      font-size: 0.85rem;
+      color: #aac;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .submitted-answer {
+      background: #0f1f6a;
+      border: 2px solid #2a9d2a;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-size: 1.1rem;
+      width: 100%;
+      text-align: center;
+    }
+
+    .waiting-result {
+      color: #aac;
+      font-size: 0.9rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    /* Revealed answer */
+    #revealed-panel {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .revealed-label {
+      font-size: 0.85rem;
+      color: #aac;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .revealed-answer {
+      background: #071240;
+      border: 2px solid #90efc0;
+      border-radius: 10px;
+      padding: 18px 20px;
+      color: #90efc0;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div id="topbar">
+  <div id="topbar-title">Jeopardy</div>
+  <div id="topbar-team"></div>
+  <div id="topbar-score"></div>
+</div>
+
+<div id="main">
+
+  <!-- ── JOIN SCREEN ── -->
+  <div id="screen-join">
+    <div class="big-title">Matematik<br>Jeopardy</div>
+    <div class="subtitle">Tilmeld dit hold herunder</div>
+
+    <div id="join-form">
+      <div class="field-label">Holdnavn</div>
+      <input id="team-input" type="text" placeholder="Skriv holdets navn..." maxlength="30"
+             onkeydown="if(event.key==='Enter') joinTeam()" />
+      <button class="big-btn" onclick="joinTeam()">Tilmeld hold</button>
+      <div id="join-error"></div>
+    </div>
+  </div>
+
+  <!-- ── GAME SCREEN ── -->
+  <div id="screen-game">
+
+    <!-- Scoreboard -->
+    <div id="scoreboard">
+      <div class="sb-header">Stilling</div>
+      <div id="sb-rows"></div>
+    </div>
+
+    <!-- Idle -->
+    <div id="idle-panel">
+      <div class="waiting-icon">&#9203;</div>
+      <div class="waiting-text">Venter på at læreren vælger et spørgsmål...</div>
+    </div>
+
+    <!-- Active question -->
+    <div id="question-panel">
+      <div class="q-meta">
+        <span class="q-points"   id="q-points"></span>
+        <span class="q-category" id="q-category"></span>
+      </div>
+
+      <div class="q-text" id="q-text"></div>
+
+      <!-- Answer input -->
+      <div id="answer-form">
+        <div class="field-label">Dit svar</div>
+        <input id="answer-input" type="text" placeholder="Skriv dit svar..."
+               onkeydown="if(event.key==='Enter') submitAnswer()" />
+        <button class="big-btn" onclick="submitAnswer()">Indsend svar</button>
+      </div>
+
+      <!-- Submitted -->
+      <div id="submitted-panel">
+        <div class="submitted-check">&#10003;</div>
+        <div class="submitted-label">Svar indsendt</div>
+        <div class="submitted-answer" id="my-answer-display"></div>
+        <div class="waiting-result">Venter på bedømmelse...</div>
+      </div>
+
+      <!-- Revealed answer -->
+      <div id="revealed-panel">
+        <div class="revealed-label">Facit</div>
+        <div class="revealed-answer" id="revealed-text"></div>
+      </div>
+    </div>
+
+  </div><!-- /screen-game -->
+</div><!-- /main -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  let myTeamName = null;
+  let allTeams   = [];
+
+  // Skærm-tilstand: 'idle' | 'question' | 'submitted' | 'revealed'
+  let gameState = 'idle';
+
+  // ── Socket events ────────────────────────────────────
+
+  socket.on('state', (data) => {
+    allTeams = data.teams;
+    renderScoreboard();
+    if (myTeamName && data.currentQ) {
+      showQuestion(data.currentQ);
+    }
+  });
+
+  socket.on('join-ok', (name) => {
+    myTeamName = name;
+    document.getElementById('screen-join').style.display = 'none';
+    document.getElementById('screen-game').style.display = 'flex';
+    document.getElementById('topbar-team').style.display  = 'block';
+    document.getElementById('topbar-score').style.display = 'block';
+    document.getElementById('topbar-team').innerHTML = 'Hold: <strong>' + esc(name) + '</strong>';
+    renderScoreboard();
+  });
+
+  socket.on('join-error', (msg) => {
+    document.getElementById('join-error').textContent = msg;
+  });
+
+  socket.on('teams-update', (teams) => {
+    allTeams = teams;
+    renderScoreboard();
+    updateMyScore();
+  });
+
+  socket.on('question-opened', (q) => {
+    showQuestion(q);
+  });
+
+  socket.on('answer-received', (answer) => {
+    setGameState('submitted');
+    document.getElementById('my-answer-display').textContent = answer;
+  });
+
+  socket.on('answer-revealed', (a) => {
+    setGameState('revealed');
+    document.getElementById('revealed-text').innerHTML = a;
+  });
+
+  socket.on('question-closed', () => {
+    setGameState('idle');
+  });
+
+  socket.on('game-reset', () => {
+    allTeams = [];
+    renderScoreboard();
+    updateMyScore();
+    setGameState('idle');
+  });
+
+  // ── Handlinger ───────────────────────────────────────
+
+  function joinTeam() {
+    const name = document.getElementById('team-input').value.trim();
+    document.getElementById('join-error').textContent = '';
+    if (!name) {
+      document.getElementById('join-error').textContent = 'Skriv et holdnavn.';
+      return;
+    }
+    socket.emit('join-team', name);
+  }
+
+  function submitAnswer() {
+    const answer = document.getElementById('answer-input').value.trim();
+    if (!answer) return;
+    socket.emit('submit-answer', answer);
+  }
+
+  // ── UI helpers ───────────────────────────────────────
+
+  function showQuestion(q) {
+    document.getElementById('q-points').textContent   = q.points + ' point';
+    document.getElementById('q-category').textContent = q.category;
+    document.getElementById('q-text').innerHTML       = q.q;
+    document.getElementById('answer-input').value     = '';
+    setGameState('question');
+  }
+
+  function setGameState(state) {
+    gameState = state;
+
+    const idle       = document.getElementById('idle-panel');
+    const questionP  = document.getElementById('question-panel');
+    const answerForm = document.getElementById('answer-form');
+    const submittedP = document.getElementById('submitted-panel');
+    const revealedP  = document.getElementById('revealed-panel');
+
+    // Hide all sub-panels first
+    idle.style.display       = 'none';
+    questionP.style.display  = 'none';
+    answerForm.style.display = 'none';
+    submittedP.style.display = 'none';
+    revealedP.style.display  = 'none';
+
+    if (state === 'idle') {
+      idle.style.display = 'flex';
+    } else if (state === 'question') {
+      questionP.style.display  = 'flex';
+      answerForm.style.display = 'flex';
+    } else if (state === 'submitted') {
+      questionP.style.display  = 'flex';
+      submittedP.style.display = 'flex';
+    } else if (state === 'revealed') {
+      questionP.style.display = 'flex';
+      revealedP.style.display = 'flex';
+      // Keep submitted answer visible above facit if we had one
+      const myAns = document.getElementById('my-answer-display').textContent;
+      if (myAns) submittedP.style.display = 'flex';
+    }
+  }
+
+  function renderScoreboard() {
+    const rows = document.getElementById('sb-rows');
+    if (!rows) return;
+    rows.innerHTML = allTeams.map((t, i) => {
+      const isMine = t.name === myTeamName;
+      return `<div class="sb-row${isMine ? ' my-team' : ''}">
+        <span class="sb-rank">${i + 1}.</span>
+        <span class="sb-name">${esc(t.name)}${isMine ? ' ★' : ''}</span>
+        <span class="sb-pts">${t.score}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function updateMyScore() {
+    const me = allTeams.find(t => t.name === myTeamName);
+    if (me) document.getElementById('topbar-score').textContent = me.score + ' pt';
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
