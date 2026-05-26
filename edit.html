@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rediger spørgsmål – Jeopardy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a2e;
+      color: #fff;
+      min-height: 100vh;
+      padding: 28px 20px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: #f0c040;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 6px;
+    }
+
+    .intro {
+      color: #aac;
+      font-size: 0.88rem;
+      margin-bottom: 28px;
+    }
+
+    /* ── Kategori-kort ── */
+    .category-card {
+      background: #0f1f6a;
+      border: 2px solid #3355cc;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .category-header {
+      background: #1a3a8a;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cat-label {
+      font-size: 0.75rem;
+      color: #aac;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .cat-name-input {
+      flex: 1;
+      background: #0f1f6a;
+      border: 1px solid #3355cc;
+      border-radius: 6px;
+      padding: 7px 12px;
+      color: #f0c040;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    .cat-name-input:focus { outline: none; border-color: #f0c040; }
+
+    /* ── Spørgsmåls-tabel ── */
+    .q-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .q-table thead th {
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      color: #aac;
+      letter-spacing: 1px;
+      text-align: left;
+      border-bottom: 1px solid #2a3a6a;
+    }
+
+    .q-table tbody tr {
+      border-bottom: 1px solid #1a2a5a;
+    }
+    .q-table tbody tr:last-child { border-bottom: none; }
+
+    .q-table td {
+      padding: 10px 12px;
+      vertical-align: top;
+    }
+
+    .pts-cell {
+      color: #f0c040;
+      font-weight: bold;
+      font-size: 1.1rem;
+      width: 60px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    textarea {
+      width: 100%;
+      background: #071240;
+      border: 1px solid #2a3a6a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: 'Segoe UI', sans-serif;
+      resize: vertical;
+      min-height: 52px;
+      line-height: 1.4;
+    }
+    textarea:focus { outline: none; border-color: #3355cc; }
+
+    textarea.answer-field { color: #90efc0; }
+
+    .field-hint {
+      font-size: 0.7rem;
+      color: #446;
+      margin-top: 3px;
+    }
+
+    /* ── Gem-knap ── */
+    #save-bar {
+      position: sticky;
+      bottom: 0;
+      background: #0a0a2e;
+      border-top: 1px solid #1a2a5a;
+      padding: 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    #save-btn {
+      background: #f0c040;
+      color: #0a0a2e;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    #save-btn:hover   { opacity: 0.9; }
+    #save-btn:disabled { opacity: 0.5; cursor: default; }
+
+    #status-msg {
+      font-size: 0.9rem;
+    }
+    .msg-ok  { color: #4cd94c; }
+    .msg-err { color: #ff6666; }
+
+    /* ── Tip-boks ── */
+    .tip-box {
+      background: #071240;
+      border: 1px solid #2a3a6a;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      font-size: 0.82rem;
+      color: #aac;
+      line-height: 1.6;
+    }
+    .tip-box strong { color: #f0c040; }
+    .tip-box code {
+      background: #1a2a5a;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #ccdeff;
+      font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Rediger spørgsmål</h1>
+<p class="intro">Ændringer gemmes på serveren og træder i kraft med det samme.</p>
+
+<div class="tip-box">
+  <strong>Formattering:</strong> Du kan bruge simpel HTML i spørgsmål og svar.
+  Eksempler: <code>&lt;sup&gt;2&lt;/sup&gt;</code> giver x² &nbsp;·&nbsp;
+  <code>&lt;sub&gt;n&lt;/sub&gt;</code> giver K<sub>n</sub> &nbsp;·&nbsp;
+  <code>&lt;strong&gt;svar&lt;/strong&gt;</code> giver <strong>fed tekst</strong> &nbsp;·&nbsp;
+  <code>&lt;br&gt;</code> giver linjeskift.
+</div>
+
+<div id="categories-container">
+  <p style="color:#aac">Indlæser spørgsmål...</p>
+</div>
+
+<div id="save-bar">
+  <button id="save-btn" onclick="saveAll()">Gem alle ændringer</button>
+  <span id="status-msg"></span>
+</div>
+
+<script>
+  let data = null;
+
+  // ── Indlæs spørgsmål fra server ──────────────────────
+  fetch('/api/questions')
+    .then(r => r.json())
+    .then(d => {
+      data = d;
+      renderEditor(d);
+    })
+    .catch(() => {
+      document.getElementById('categories-container').innerHTML =
+        '<p style="color:#f66">Kunne ikke indlæse spørgsmål. Er serveren kørende?</p>';
+    });
+
+  // ── Byg redigeringsformular ──────────────────────────
+  function renderEditor(d) {
+    const container = document.getElementById('categories-container');
+    container.innerHTML = '';
+
+    d.categories.forEach((cat, ci) => {
+      const card = document.createElement('div');
+      card.className = 'category-card';
+      card.dataset.ci = ci;
+
+      const headerHTML = `
+        <div class="category-header">
+          <span class="cat-label">Kategori ${ci + 1}</span>
+          <input class="cat-name-input" type="text" value="${esc(cat.name)}"
+                 data-ci="${ci}" data-field="name" />
+        </div>`;
+
+      const rowsHTML = cat.questions.map((q, qi) => `
+        <tr>
+          <td class="pts-cell">${d.points[qi]}</td>
+          <td>
+            <textarea data-ci="${ci}" data-qi="${qi}" data-field="q"
+                      rows="2">${escTA(q.q)}</textarea>
+            <div class="field-hint">Spørgsmål</div>
+          </td>
+          <td>
+            <textarea class="answer-field" data-ci="${ci}" data-qi="${qi}" data-field="a"
+                      rows="2">${escTA(q.a)}</textarea>
+            <div class="field-hint">Svar</div>
+          </td>
+        </tr>`).join('');
+
+      card.innerHTML = headerHTML + `
+        <table class="q-table">
+          <thead><tr>
+            <th>Point</th>
+            <th>Spørgsmål</th>
+            <th>Svar</th>
+          </tr></thead>
+          <tbody>${rowsHTML}</tbody>
+        </table>`;
+
+      container.appendChild(card);
+    });
+  }
+
+  // ── Læs alle værdier og gem ──────────────────────────
+  function saveAll() {
+    const btn = document.getElementById('save-btn');
+    const msg = document.getElementById('status-msg');
+    btn.disabled = true;
+    msg.textContent = 'Gemmer...';
+    msg.className = '';
+
+    // Byg opdateret categories-array fra DOM
+    const categories = data.categories.map((cat, ci) => {
+      const nameEl = document.querySelector(`input[data-ci="${ci}"][data-field="name"]`);
+      const questions = cat.questions.map((q, qi) => {
+        const qEl = document.querySelector(`textarea[data-ci="${ci}"][data-qi="${qi}"][data-field="q"]`);
+        const aEl = document.querySelector(`textarea[data-ci="${ci}"][data-qi="${qi}"][data-field="a"]`);
+        return { q: qEl.value, a: aEl.value };
+      });
+      return { name: nameEl.value, questions };
+    });
+
+    fetch('/api/save-questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories }),
+    })
+      .then(r => r.json())
+      .then(result => {
+        btn.disabled = false;
+        if (result.ok) {
+          msg.textContent = 'Gemt!';
+          msg.className = 'msg-ok';
+          data.categories = categories;
+          setTimeout(() => { msg.textContent = ''; }, 3000);
+        } else {
+          msg.textContent = 'Fejl: ' + (result.error || 'Ukendt fejl');
+          msg.className = 'msg-err';
+        }
+      })
+      .catch(e => {
+        btn.disabled = false;
+        msg.textContent = 'Netværksfejl – er serveren kørende?';
+        msg.className = 'msg-err';
+      });
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Til textarea: kun & og < skal escapes (> og " er OK i textarea)
+  function escTA(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  }
+</script>
+</body>
+</html>

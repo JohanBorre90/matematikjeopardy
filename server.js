@@ -3,12 +3,14 @@ const http    = require('http');
 const { Server } = require('socket.io');
 const os   = require('os');
 const path = require('path');
+const fs   = require('fs');
 
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server);
 
 app.use(express.static(path.join(__dirname)));
+app.use(express.json());
 
 // ════════════════════════════════════════════════════════
 //  SPØRGSMÅL  (rediger her for at ændre indhold)
@@ -108,6 +110,48 @@ const CATEGORIES = [
     ],
   },
 ];
+
+// ════════════════════════════════════════════════════════
+//  INDLÆS SPØRGSMÅL (fra fil hvis den findes)
+// ════════════════════════════════════════════════════════
+
+const QUESTIONS_FILE = path.join(__dirname, 'questions.json');
+
+try {
+  if (fs.existsSync(QUESTIONS_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
+    if (saved.categories) {
+      CATEGORIES.length = 0;
+      saved.categories.forEach(c => CATEGORIES.push(c));
+    }
+  }
+} catch (e) {
+  console.warn('Kunne ikke indlæse questions.json, bruger standardspørgsmål.', e.message);
+}
+
+// ── API: hent og gem spørgsmål ──────────────────────────
+
+app.get('/api/questions', (req, res) => {
+  res.json({ points: POINTS, categories: CATEGORIES });
+});
+
+app.post('/api/save-questions', (req, res) => {
+  const { categories } = req.body;
+  if (!Array.isArray(categories)) return res.status(400).json({ error: 'Ugyldigt format' });
+
+  CATEGORIES.length = 0;
+  categories.forEach(c => CATEGORIES.push(c));
+
+  try {
+    fs.writeFileSync(QUESTIONS_FILE, JSON.stringify({ points: POINTS, categories: CATEGORIES }, null, 2), 'utf8');
+  } catch (e) {
+    return res.status(500).json({ error: 'Kunne ikke gemme filen: ' + e.message });
+  }
+
+  // Opdater alle host-klienter
+  io.emit('questions-updated', { categories: CATEGORIES, points: POINTS });
+  res.json({ ok: true });
+});
 
 // ════════════════════════════════════════════════════════
 //  SPILTILSTAND

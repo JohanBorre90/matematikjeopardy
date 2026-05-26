@@ -422,6 +422,13 @@
     refreshUsed();
   });
 
+  // ── Spørgsmål opdateret fra edit-siden ───────────────
+  socket.on('questions-updated', (data) => {
+    categories = data.categories;
+    points     = data.points;
+    buildBoard();
+  });
+
   // ── Nulstil ──────────────────────────────────────────
   socket.on('game-reset', () => {
     stopTimer();
