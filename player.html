@@ -216,8 +216,10 @@
     .q-meta {
       display: flex;
       gap: 10px;
-      align-items: baseline;
+      align-items: center;
+      justify-content: space-between;
     }
+    .q-meta-left { display: flex; gap: 10px; align-items: baseline; }
     .q-points   {
       background: #f0c040;
       color: #0a0a2e;
@@ -227,6 +229,18 @@
       border-radius: 20px;
     }
     .q-category { color: #aac; font-size: 0.85rem; }
+
+    /* Timer */
+    #q-timer {
+      font-size: 2.2rem;
+      font-weight: bold;
+      min-width: 52px;
+      text-align: right;
+      transition: color 0.4s;
+    }
+    .timer-green  { color: #4cd94c; }
+    .timer-yellow { color: #f0c040; }
+    .timer-red    { color: #ff4444; }
 
     .q-text {
       background: #0f1f6a;
@@ -357,8 +371,11 @@
     <!-- Active question -->
     <div id="question-panel">
       <div class="q-meta">
-        <span class="q-points"   id="q-points"></span>
-        <span class="q-category" id="q-category"></span>
+        <div class="q-meta-left">
+          <span class="q-points"   id="q-points"></span>
+          <span class="q-category" id="q-category"></span>
+        </div>
+        <div id="q-timer" class="timer-green"></div>
       </div>
 
       <div class="q-text" id="q-text"></div>
@@ -393,11 +410,29 @@
 <script>
   const socket = io();
 
-  let myTeamName = null;
-  let allTeams   = [];
+  let myTeamName   = null;
+  let allTeams     = [];
+  let timerInterval = null;
 
   // Skærm-tilstand: 'idle' | 'question' | 'submitted' | 'revealed'
   let gameState = 'idle';
+
+  function startTimer(startedAt, duration) {
+    clearInterval(timerInterval);
+    const el = document.getElementById('q-timer');
+    timerInterval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil(duration - (Date.now() - startedAt) / 1000));
+      el.textContent = remaining;
+      el.className = remaining <= 5 ? 'timer-red' : remaining <= 15 ? 'timer-yellow' : 'timer-green';
+      if (remaining === 0) clearInterval(timerInterval);
+    }, 200);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    const el = document.getElementById('q-timer');
+    if (el) el.textContent = '';
+  }
 
   // ── Socket events ────────────────────────────────────
 
@@ -444,10 +479,12 @@
   });
 
   socket.on('question-closed', () => {
+    stopTimer();
     setGameState('idle');
   });
 
   socket.on('game-reset', () => {
+    stopTimer();
     allTeams = [];
     renderScoreboard();
     updateMyScore();
@@ -480,6 +517,7 @@
     document.getElementById('q-text').innerHTML       = q.q;
     document.getElementById('answer-input').value     = '';
     setGameState('question');
+    startTimer(q.startedAt, q.timerDuration);
   }
 
   function setGameState(state) {

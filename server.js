@@ -116,8 +116,9 @@ const CATEGORIES = [
 let hostSocketId = null;
 let teams      = new Map();  // socketId → { name, score }
 let usedCells  = {};         // "col-row" → true
-let currentQ   = null;       // { col, row, points, category, q, a } | null
+let currentQ   = null;       // { col, row, points, category, q, a, timerDuration, startedAt } | null
 let answers    = {};         // teamName → answerText
+let timerTimeout = null;     // server-side auto-luk timer
 
 function teamsArr() {
   return [...teams.values()]
@@ -165,22 +166,37 @@ io.on('connection', socket => {
   });
 
   // ── Host åbner spørgsmål ────────────────────────────
-  socket.on('open-question', ({ col, row }) => {
+  socket.on('open-question', ({ col, row, timerDuration }) => {
     if (socket.id !== hostSocketId) return;
     if (usedCells[`${col}-${row}`]) return;
     const entry = CATEGORIES[col]?.questions[row];
     if (!entry) return;
 
+    const duration = Math.min(Math.max(parseInt(timerDuration) || 60, 5), 300);
+
     currentQ = {
       col, row,
-      points:   POINTS[row],
-      category: CATEGORIES[col].name,
-      q: entry.q,
-      a: entry.a,
+      points:        POINTS[row],
+      category:      CATEGORIES[col].name,
+      q:             entry.q,
+      a:             entry.a,
+      timerDuration: duration,
+      startedAt:     Date.now(),
     };
     answers = {};
     io.emit('question-opened', currentQ);
     socket.emit('answers-update', answers);
+
+    // Auto-luk når timer udløber
+    clearTimeout(timerTimeout);
+    timerTimeout = setTimeout(() => {
+      if (!currentQ) return;
+      usedCells[`${currentQ.col}-${currentQ.row}`] = true;
+      currentQ = null;
+      answers  = {};
+      io.emit('used-cells-update', usedCells);
+      io.emit('question-closed');
+    }, duration * 1000);
   });
 
   // ── Elev indsender svar ─────────────────────────────
@@ -212,6 +228,7 @@ io.on('connection', socket => {
   // ── Host lukker spørgsmål ───────────────────────────
   socket.on('close-question', () => {
     if (socket.id !== hostSocketId) return;
+    clearTimeout(timerTimeout);
     if (currentQ) {
       usedCells[`${currentQ.col}-${currentQ.row}`] = true;
       io.emit('used-cells-update', usedCells);
@@ -224,6 +241,7 @@ io.on('connection', socket => {
   // ── Host nulstiller spillet ─────────────────────────
   socket.on('reset-game', () => {
     if (socket.id !== hostSocketId) return;
+    clearTimeout(timerTimeout);
     teams.forEach(t => { t.score = 0; });
     usedCells = {};
     currentQ  = null;

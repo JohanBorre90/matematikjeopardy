@@ -217,8 +217,12 @@
     }
     .panel-btn:hover { opacity: 0.85; }
 
-    #btn-reveal { background: #2255cc; color: #fff; }
-    #btn-close  { background: #444;    color: #fff; }
+    #btn-show-answers { background: #555;    color: #fff; }
+    #btn-reveal       { background: #2255cc; color: #fff; }
+    #btn-close        { background: #444;    color: #fff; }
+
+    .ans-status-yes { color: #4cd94c; font-style: italic; }
+    .ans-status-no  { color: #556;    font-style: italic; }
 
     /* ── Bottom buttons ── */
     #bottom-row {
@@ -239,13 +243,37 @@
     }
     .bottom-btn:hover { border-color: #f0c040; color: #f0c040; }
 
-    /* ── Waiting for host ── */
-    #waiting-msg {
-      color: #556;
-      font-size: 0.85rem;
-      margin-top: 10px;
+    /* ── Timer ── */
+    #timer-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      justify-content: center;
+      font-size: 0.88rem;
+      color: #aac;
+    }
+    #timer-row input {
+      width: 64px;
+      background: #12124a;
+      border: 2px solid #3355cc;
+      border-radius: 6px;
+      padding: 5px 8px;
+      color: #fff;
+      font-size: 0.95rem;
       text-align: center;
     }
+
+    #panel-timer {
+      font-size: 3.5rem;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 14px;
+      transition: color 0.4s;
+    }
+    .timer-green  { color: #4cd94c; }
+    .timer-yellow { color: #f0c040; }
+    .timer-red    { color: #ff4444; }
   </style>
 </head>
 <body>
@@ -255,6 +283,13 @@
 <div id="status-bar">Status: <span id="conn-status">Forbinder...</span></div>
 
 <div id="scoreboard"></div>
+
+<div id="timer-row">
+  <span>Timer:</span>
+  <input id="timer-input" type="number" value="60" min="5" max="300" />
+  <span>sekunder</span>
+</div>
+
 <div id="board"></div>
 
 <div id="bottom-row">
@@ -264,6 +299,8 @@
 <!-- Host panel -->
 <div id="panel-overlay">
   <div id="panel">
+    <div id="panel-timer" class="timer-green">60</div>
+
     <div id="panel-meta">
       <div id="panel-points"></div>
       <div id="panel-category"></div>
@@ -277,7 +314,8 @@
         <thead>
           <tr>
             <th>Hold</th>
-            <th>Svar</th>
+            <th>Status</th>
+            <th id="ans-col-header" style="display:none">Svar</th>
             <th>Point</th>
           </tr>
         </thead>
@@ -286,7 +324,8 @@
     </div>
 
     <div class="panel-btn-row">
-      <button class="panel-btn" id="btn-reveal" onclick="revealAnswer()">Vis svar for alle</button>
+      <button class="panel-btn" id="btn-show-answers" onclick="toggleAnswers()">Vis holds svar</button>
+      <button class="panel-btn" id="btn-reveal" onclick="revealAnswer()">Vis facit</button>
       <button class="panel-btn" id="btn-close"  onclick="closeQuestion()">Luk spørgsmål</button>
     </div>
   </div>
@@ -295,12 +334,29 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
-  let currentQ   = null;
-  let currentAns = {};
-  let allTeams   = [];
-  let categories = [];
-  let points     = [];
-  let usedCells  = {};
+  let currentQ      = null;
+  let currentAns    = {};
+  let allTeams      = [];
+  let categories    = [];
+  let points        = [];
+  let usedCells     = {};
+  let timerInterval  = null;
+  let answersVisible = false;
+
+  function startTimer(startedAt, duration) {
+    clearInterval(timerInterval);
+    const el = document.getElementById('panel-timer');
+    timerInterval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil(duration - (Date.now() - startedAt) / 1000));
+      el.textContent = remaining;
+      el.className = remaining <= 5 ? 'timer-red' : remaining <= 15 ? 'timer-yellow' : 'timer-green';
+      if (remaining === 0) clearInterval(timerInterval);
+    }, 200);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+  }
 
   // ── Forbindelse ──────────────────────────────────────
   socket.on('connect', () => {
@@ -334,8 +390,9 @@
 
   // ── Spørgsmål åbnet (bekræftelse til host) ───────────
   socket.on('question-opened', (q) => {
-    currentQ   = q;
-    currentAns = {};
+    currentQ       = q;
+    currentAns     = {};
+    answersVisible = false;
     showPanel();
     renderAnswerTable();
   });
@@ -354,6 +411,7 @@
 
   // ── Spørgsmål lukket ─────────────────────────────────
   socket.on('question-closed', () => {
+    stopTimer();
     currentQ   = null;
     currentAns = {};
     document.getElementById('panel-overlay').classList.remove('active');
@@ -366,6 +424,7 @@
 
   // ── Nulstil ──────────────────────────────────────────
   socket.on('game-reset', () => {
+    stopTimer();
     currentQ   = null;
     currentAns = {};
     usedCells  = {};
@@ -398,7 +457,7 @@
         el.textContent = pts;
         el.dataset.col = col;
         el.dataset.row = row;
-        el.onclick = () => socket.emit('open-question', { col, row });
+        el.onclick = () => socket.emit('open-question', { col, row, timerDuration: getTimerDuration() });
         board.appendChild(el);
       });
     });
@@ -430,19 +489,27 @@
     document.getElementById('panel-answer').classList.remove('visible');
     document.getElementById('panel-overlay').classList.add('active');
     renderAnswerTable();
+    startTimer(currentQ.startedAt, currentQ.timerDuration);
   }
 
   function renderAnswerTable() {
-    const tbody = document.getElementById('answers-body');
+    const tbody    = document.getElementById('answers-body');
+    const colHeader = document.getElementById('ans-col-header');
+    colHeader.style.display = answersVisible ? '' : 'none';
+
+    const pts = currentQ ? currentQ.points : 0;
     tbody.innerHTML = allTeams.map(t => {
-      const ans = currentAns[t.name];
-      const ansCell = ans
-        ? `<td class="ans-text">${esc(ans)}</td>`
-        : `<td class="ans-pending">Afventer...</td>`;
-      const pts = currentQ ? currentQ.points : 0;
+      const hasAnswered = t.name in currentAns;
+      const statusCell = hasAnswered
+        ? `<td class="ans-status-yes">Har svaret</td>`
+        : `<td class="ans-status-no">Afventer...</td>`;
+      const answerCell = answersVisible
+        ? `<td class="ans-text">${hasAnswered ? esc(currentAns[t.name]) : '—'}</td>`
+        : '';
       return `<tr>
         <td class="ans-team">${esc(t.name)}</td>
-        ${ansCell}
+        ${statusCell}
+        ${answerCell}
         <td>
           <button class="award-btn btn-correct" onclick="award('${esc(t.name)}', ${pts})">+${pts}</button>
           <button class="award-btn btn-wrong"   onclick="award('${esc(t.name)}', ${-pts})">−${pts}</button>
@@ -451,9 +518,20 @@
     }).join('');
   }
 
+  function toggleAnswers() {
+    answersVisible = !answersVisible;
+    document.getElementById('btn-show-answers').textContent =
+      answersVisible ? 'Skjul holds svar' : 'Vis holds svar';
+    renderAnswerTable();
+  }
+
   // ════════════════════════════════════════════════════
   //  HANDLINGER
   // ════════════════════════════════════════════════════
+
+  function getTimerDuration() {
+    return parseInt(document.getElementById('timer-input').value) || 60;
+  }
 
   function revealAnswer()  { socket.emit('reveal-answer'); }
   function closeQuestion() { socket.emit('close-question'); }
