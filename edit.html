@@ -151,6 +151,19 @@
     #save-btn:hover   { opacity: 0.9; }
     #save-btn:disabled { opacity: 0.5; cursor: default; }
 
+    #download-btn {
+      background: transparent;
+      color: #f0c040;
+      border: 2px solid #f0c040;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    #download-btn:hover { background: #f0c04022; }
+
     #status-msg {
       font-size: 0.9rem;
     }
@@ -197,6 +210,7 @@
 
 <div id="save-bar">
   <button id="save-btn" onclick="saveAll()">Gem alle ændringer</button>
+  <button id="download-btn" onclick="downloadJSON()">Download questions.json</button>
   <span id="status-msg"></span>
 </div>
 
@@ -303,6 +317,24 @@
         msg.textContent = 'Netværksfejl – er serveren kørende?';
         msg.className = 'msg-err';
       });
+  }
+
+  // ── Download questions.json ──────────────────────────
+  function downloadJSON() {
+    const categories = data.categories.map((cat, ci) => {
+      const nameEl = document.querySelector(`input[data-ci="${ci}"][data-field="name"]`);
+      const questions = cat.questions.map((q, qi) => {
+        const qEl = document.querySelector(`textarea[data-ci="${ci}"][data-qi="${qi}"][data-field="q"]`);
+        const aEl = document.querySelector(`textarea[data-ci="${ci}"][data-qi="${qi}"][data-field="a"]`);
+        return { q: qEl.value, a: aEl.value };
+      });
+      return { name: nameEl.value, questions };
+    });
+    const json = JSON.stringify({ categories, points: data.points }, null, 2);
+    const a = document.createElement('a');
+    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+    a.download = 'questions.json';
+    a.click();
   }
 
   function esc(s) {
