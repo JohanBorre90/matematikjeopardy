@@ -162,6 +162,7 @@ let teams      = new Map();  // socketId → { name, score }
 let usedCells  = {};         // "col-row" → true
 let currentQ   = null;       // { col, row, points, category, q, a, timerDuration, startedAt } | null
 let answers    = {};         // teamName → answerText
+let answerOrder = [];        // holdnavne i den rækkefølge de svarede
 let timerTimeout = null;     // server-side auto-luk timer
 
 function teamsArr() {
@@ -190,7 +191,7 @@ io.on('connection', socket => {
     hostSocketId = socket.id;
     socket.emit('host-ok');
     // Send eksisterende svar til host
-    socket.emit('answers-update', answers);
+    socket.emit('answers-update', { answers, answerOrder });
   });
 
   // ── Elev tilmelder hold ─────────────────────────────
@@ -228,8 +229,9 @@ io.on('connection', socket => {
       startedAt:     Date.now(),
     };
     answers = {};
+    answerOrder = [];
     io.emit('question-opened', currentQ);
-    socket.emit('answers-update', answers);
+    socket.emit('answers-update', { answers, answerOrder });
 
     // Auto-luk når timer udløber
     clearTimeout(timerTimeout);
@@ -238,6 +240,7 @@ io.on('connection', socket => {
       usedCells[`${currentQ.col}-${currentQ.row}`] = true;
       currentQ = null;
       answers  = {};
+      answerOrder = [];
       io.emit('used-cells-update', usedCells);
       io.emit('question-closed');
     }, duration * 1000);
@@ -249,8 +252,9 @@ io.on('connection', socket => {
     if (!team || !currentQ) return;
     const answer = String(raw).trim().slice(0, 300);
     answers[team.name] = answer;
+    if (!answerOrder.includes(team.name)) answerOrder.push(team.name);
     socket.emit('answer-received', answer);
-    if (hostSocketId) io.to(hostSocketId).emit('answers-update', answers);
+    if (hostSocketId) io.to(hostSocketId).emit('answers-update', { answers, answerOrder });
   });
 
   // ── Host afslører svar for alle ─────────────────────
@@ -279,6 +283,7 @@ io.on('connection', socket => {
     }
     currentQ = null;
     answers  = {};
+    answerOrder = [];
     io.emit('question-closed');
   });
 
@@ -290,6 +295,7 @@ io.on('connection', socket => {
     usedCells = {};
     currentQ  = null;
     answers   = {};
+    answerOrder = [];
     io.emit('game-reset');
     io.emit('teams-update', teamsArr());
   });

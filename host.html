@@ -336,6 +336,7 @@
   const socket = io();
   let currentQ      = null;
   let currentAns    = {};
+  let answerOrder   = [];
   let allTeams      = [];
   let categories    = [];
   let points        = [];
@@ -392,14 +393,16 @@
   socket.on('question-opened', (q) => {
     currentQ       = q;
     currentAns     = {};
+    answerOrder    = [];
     answersVisible = false;
     showPanel();
     renderAnswerTable();
   });
 
   // ── Svar modtaget ────────────────────────────────────
-  socket.on('answers-update', (ans) => {
-    currentAns = ans;
+  socket.on('answers-update', (data) => {
+    currentAns  = data.answers;
+    answerOrder = data.answerOrder;
     renderAnswerTable();
   });
 
@@ -505,7 +508,13 @@
     colHeader.style.display = answersVisible ? '' : 'none';
 
     const pts = currentQ ? currentQ.points : 0;
-    tbody.innerHTML = allTeams.map(t => {
+
+    // Svar-hold i svar-rækkefølge, derefter hold der ikke har svaret
+    const answeredTeams   = answerOrder.map(n => allTeams.find(t => t.name === n)).filter(Boolean);
+    const unansweredTeams = allTeams.filter(t => !answerOrder.includes(t.name));
+    const sortedTeams     = [...answeredTeams, ...unansweredTeams];
+
+    tbody.innerHTML = sortedTeams.map(t => {
       const hasAnswered = t.name in currentAns;
       const statusCell = hasAnswered
         ? `<td class="ans-status-yes">Har svaret</td>`
