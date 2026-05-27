@@ -124,6 +124,27 @@ Læreren styrer spillet fra én computer; eleverne deltager via deres egne enhed
 
 ---
 
+### v2.4 – 2026-05-27
+**Kronologisk svarvisning + tidsbaseret pointmetode**
+
+**Svarrækkefølge:**
+- Hold der svarer først vises øverst i lærerens svar-panel
+- Hold der endnu ikke har svaret vises nederst ("Afventer...")
+- Serveren tracker rækkefølgen i et `answerOrder`-array og sender det med `answers-update`
+
+**Tidsbaseret pointmetode:**
+- Host kan vælge mellem to pointmetoder via radioknapper under timeren
+- *Traditionel:* Fast pointværdi som hidtil
+- *Tidsbaseret:* `point = opgavens point × (tid tilbage / total tid)`, afrundet til nærmeste heltal
+- Det beregnede pointtal vises i gult per hold i svar-panelet
+- +/− knapperne bruger automatisk det beregnede pointtal
+
+**Backup af spørgsmål:**
+- `questions.json` tilføjet til git-repositoryet – overlever fremtidige re-deploys på Railway
+- Download-knap tilføjet i `edit.html` – downloader den aktuelle tilstand af spørgsmålene som `questions.json`
+
+---
+
 ## Kendte begrænsninger
 
 - **Filpersistens på Railway:** `questions.json` gemmes på Railway's filsystem, som nulstilles ved re-deploy. Overvej en ekstern database (f.eks. Railway's PostgreSQL eller en gratis MongoDB Atlas) for permanent lagring af redigerede spørgsmål.
