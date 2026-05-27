@@ -248,11 +248,23 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      margin-bottom: 10px;
+      justify-content: center;
+      font-size: 0.88rem;
+      color: #aac;
+    }
+
+    #scoring-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
       margin-bottom: 18px;
       justify-content: center;
       font-size: 0.88rem;
       color: #aac;
     }
+    #scoring-row label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+    #scoring-row input[type="radio"] { accent-color: #f0c040; }
     #timer-row input {
       width: 64px;
       background: #12124a;
@@ -288,6 +300,12 @@
   <span>Timer:</span>
   <input id="timer-input" type="number" value="60" min="5" max="300" />
   <span>sekunder</span>
+</div>
+
+<div id="scoring-row">
+  <span>Pointmetode:</span>
+  <label><input type="radio" name="scoring" value="traditional" checked onchange="scoringMode=this.value;renderAnswerTable()"> Traditionel</label>
+  <label><input type="radio" name="scoring" value="timed" onchange="scoringMode=this.value;renderAnswerTable()"> Tidsbaseret</label>
 </div>
 
 <div id="board"></div>
@@ -338,6 +356,7 @@
   let currentAns    = {};
   let answerOrder   = [];
   let allTeams      = [];
+  let scoringMode   = 'traditional';
   let categories    = [];
   let points        = [];
   let usedCells     = {};
@@ -516,19 +535,22 @@
 
     tbody.innerHTML = sortedTeams.map(t => {
       const hasAnswered = t.name in currentAns;
-      const statusCell = hasAnswered
+      const statusCell  = hasAnswered
         ? `<td class="ans-status-yes">Har svaret</td>`
         : `<td class="ans-status-no">Afventer...</td>`;
-      const answerCell = answersVisible
-        ? `<td class="ans-text">${hasAnswered ? esc(currentAns[t.name]) : '—'}</td>`
+      const answerCell  = answersVisible
+        ? `<td class="ans-text">${hasAnswered ? esc(currentAns[t.name].text) : '—'}</td>`
         : '';
+      const teamPts     = calcPoints(t.name);
+      const pointLabel  = scoringMode === 'timed' && hasAnswered ? `${teamPts} pt` : '';
       return `<tr>
         <td class="ans-team">${esc(t.name)}</td>
         ${statusCell}
         ${answerCell}
-        <td>
-          <button class="award-btn btn-correct" onclick="award('${esc(t.name)}', ${pts})">+${pts}</button>
-          <button class="award-btn btn-wrong"   onclick="award('${esc(t.name)}', ${-pts})">−${pts}</button>
+        <td style="white-space:nowrap">
+          ${pointLabel ? `<span style="color:#f0c040;font-size:0.85rem;margin-right:6px">${pointLabel}</span>` : ''}
+          <button class="award-btn btn-correct" onclick="award('${esc(t.name)}', ${teamPts})">+${teamPts}</button>
+          <button class="award-btn btn-wrong"   onclick="award('${esc(t.name)}', ${-teamPts})">−${teamPts}</button>
         </td>
       </tr>`;
     }).join('');
@@ -557,6 +579,14 @@
   }
   function award(teamName, delta) {
     socket.emit('award-points', { teamName, delta });
+  }
+
+  function calcPoints(teamName) {
+    const base = currentQ ? currentQ.points : 0;
+    if (scoringMode === 'traditional' || !(teamName in currentAns)) return base;
+    const elapsed   = (currentAns[teamName].submittedAt - currentQ.startedAt) / 1000;
+    const remaining = Math.max(0, currentQ.timerDuration - elapsed);
+    return Math.round(base * remaining / currentQ.timerDuration);
   }
 
   function esc(s) {

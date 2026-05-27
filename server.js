@@ -251,7 +251,7 @@ io.on('connection', socket => {
     const team = teams.get(socket.id);
     if (!team || !currentQ) return;
     const answer = String(raw).trim().slice(0, 300);
-    answers[team.name] = answer;
+    answers[team.name] = { text: answer, submittedAt: Date.now() };
     if (!answerOrder.includes(team.name)) answerOrder.push(team.name);
     socket.emit('answer-received', answer);
     if (hostSocketId) io.to(hostSocketId).emit('answers-update', { answers, answerOrder });
